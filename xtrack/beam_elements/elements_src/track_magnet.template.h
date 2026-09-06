@@ -317,12 +317,14 @@ void track_magnet_particles(
             double const px0_in = sin(theta_in);
             double const px0_mid = px0_in - h * length_straight / 2;
             double const sqrt_mid = sqrt(1 - px0_mid * px0_mid);
-            // Rationalised form of (1/h)*(sqrt_mid - cos_theta_in) and
+            // Rationalised forms of (1/h)*(sqrt_mid - cos_theta_in) and
             // (1/h)*(cos_theta_out - sqrt_mid), so that h cancels exactly.
-            double const px0_out = h * length_straight / 2 - px0_mid;
             x0_in -= 0.5 * length_straight * (px0_in + px0_mid)
                         / (sqrt_mid + cos_theta_in);
-            x0_out += 0.5 * length_straight * (px0_mid - px0_out)
+            double const term_out_over_h =
+                2 * cos(angle / 2.) * sin(rbend_angle_diff / 2.) / h
+                + length_straight / 2.;
+            x0_out -= term_out_over_h * (px0_mid + sin_theta_out)
                         / (cos_theta_out + sqrt_mid);
         }
         ;
