@@ -499,7 +499,7 @@ void track_magnet_particles(
             // swapped when backtracking, so this call site handles the exit
             // face in that case, even though it is the first one traversed.
             factor_backtrack_edge < 0,
-            edge_entry_hgap, // used by both the linear and full dipole fringe models
+            edge_entry_hgap,
             knorm,
             kskew,
             3, // k_order,
@@ -515,10 +515,10 @@ void track_magnet_particles(
             x0_solenoid,
             y0_solenoid,
             length,
-            edge_entry_angle, // pole face rotation, drives the fringe rotation/wedge and the linear fringe coefficients
+            edge_entry_angle,
             edge_entry_angle_fdown,
-            edge_entry_fint, // fringe field integral (e.g. Enge/SAD-style), sets the fringe kick strength
-            factor_backtrack_edge // flips sign of fringe/wedge effects when backtracking (-1) vs forward (1)
+            edge_entry_fint,
+            factor_backtrack_edge // -1 for backtracking, 1 for forward tracking
         );
     }
 
@@ -623,7 +623,7 @@ void track_magnet_particles(
             edge_exit_model,
             // As above: when backtracking the swap makes this the entry face.
             factor_backtrack_edge >= 0,
-            edge_exit_hgap, // used by both the linear and full dipole fringe models
+            edge_exit_hgap,
             knorm,
             kskew,
             3, // k_order,
@@ -639,10 +639,10 @@ void track_magnet_particles(
             x0_solenoid,
             y0_solenoid,
             length,
-            edge_exit_angle, // pole face rotation, drives the fringe rotation/wedge and the linear fringe coefficients
+            edge_exit_angle,
             edge_exit_angle_fdown,
-            edge_exit_fint, // fringe field integral (e.g. Enge/SAD-style), sets the fringe kick strength
-            factor_backtrack_edge // flips sign of fringe/wedge effects when backtracking (-1) vs forward (1)
+            edge_exit_fint,
+            factor_backtrack_edge // -1 for backtracking, 1 for forward tracking
         );
 
         if (rbend_model == 2){

@@ -1026,6 +1026,43 @@ def test_edge_multipole_fringe_without_dipole_component(test_context):
                 atol=2e-14, rtol=0)
 
 
+@for_all_test_contexts(excluding="ContextPyopencl")
+def test_fringe_backtrack_with_exactly_zero_coordinate(test_context):
+    """A zero coordinate must not spuriously trip the convergence tolerance
+    floor (XT_FRINGE_CONVERGENCE_FLOOR): the relative term of the tolerance
+    vanishes there, so the floor alone decides convergence.
+    """
+    dipole_edge = MagnetEdge(
+        model="full", kn=[0.3], k_order=0, face_angle=0.0, _context=test_context)
+    mult_edge = xt.MultipoleEdge(kn=[0, 1.3, -0.4], order=2, _context=test_context)
+
+    # (edge, coordinates fed directly to the backward pass)
+    cases = [
+        (dipole_edge, dict(x=1e-3, y=1e-3, px=3e-4, py=0.0, delta=1e-4)),
+        (mult_edge, dict(x=0.0, y=1e-3, px=3e-4, py=2e-4, delta=1e-4)),
+        (mult_edge, dict(x=1e-3, y=0.0, px=3e-4, py=2e-4, delta=1e-4)),
+    ]
+
+    for edge, coords in cases:
+        p_back = xt.Particles(p0c=1e9, _context=test_context, **coords)
+        line = xt.Line(elements=[edge])
+        line.build_tracker(_context=test_context, use_prebuilt_kernels=False)
+        line.track(p_back, backtrack=True)
+
+        p_fwd = p_back.copy()
+        line.track(p_fwd)
+
+        p_back_cpu = p_back.copy(_context=xo.ContextCpu())
+        p_fwd_cpu = p_fwd.copy(_context=xo.ContextCpu())
+        p0_cpu = xt.Particles(p0c=1e9, **coords).copy(_context=xo.ContextCpu())
+
+        assert np.all(p_back_cpu.state == 1)
+        for coordinate in ('x', 'px', 'y', 'py', 'zeta', 'delta'):
+            xo.assert_allclose(
+                getattr(p_fwd_cpu, coordinate), getattr(p0_cpu, coordinate),
+                atol=2e-13, rtol=0)
+
+
 def test_multipole_edge_scales_with_chi():
     test_context = xo.ContextCpu()
     chi = 0.7

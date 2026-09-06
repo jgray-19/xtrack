@@ -6,12 +6,9 @@
 #define XTRACK_TRACK_DIPOLE_FRINGE_H
 
 #include "xtrack/headers/track.h"
+#include "xtrack/beam_elements/elements_src/fringe_convergence.h"
 
-// Max number of iterations for the convergence of the backtracking algorithm.
-// Normally we expect convergence in 2-3 iterations, but we allow for a few more
-// in case of extreme scenarios. Since we are not so concerned about performance
-// here, we can afford to be generous with the iteration limit.
-#define XT_DIPOLE_FRINGE_MAX_ITER 10
+#define XT_DIPOLE_FRINGE_MAX_ITER XT_FRINGE_MAX_ITER
 
 #ifndef XTRACK_FRINGE_FROM_PTC
 
@@ -92,38 +89,24 @@ void DipoleFringe_track_single_particle(
     double fi0, kx, ky, kz;
     DipoleFringe_coefficients(px, py, dpp, b0, c2, tfac, &fi0, &kx, &ky, &kz);
 
-    // Recover the incoming py by iterating the momentum relation, re-evaluating
-    // the coefficients at each estimate. Convergence is quadratic, so this
-    // normally exits after a couple of passes; a particle for which it does not
-    // converge is killed rather than tracked on with a silently wrong inverse.
     if (backtrack) {
-        const double tol = 1e-13 * fabs(py) + 1e-16;
         double source_py = py;
-        double prev_delta = 0.;
         uint8_t converged = 0;
 
         for (int64_t ii = 0; ii < XT_DIPOLE_FRINGE_MAX_ITER; ii++) {
             const double next_py =
                 py + 4 * c3 * POW3(y) + b0 * tan(fi0) * y;
 
-            // A diverging iterate runs out of the physical domain, which would
-            // make the coefficients complex. Stop rather than produce NaNs.
-            if (POW2(px) + POW2(next_py) >= dpp) {
-                break;
-            }
-
-            const double delta = fabs(next_py - source_py);
+            const double step = fabs(next_py - source_py);
+            const double tol = 1e-13 * fabs(next_py) + XT_FRINGE_TOL_FLOOR;
             source_py = next_py;
             DipoleFringe_coefficients(
                 px, source_py, dpp, b0, c2, tfac, &fi0, &kx, &ky, &kz);
 
-            // Converged, or stalled at the rounding floor.
-            if (delta <= tol ||
-                    (ii > 0 && delta >= prev_delta && delta <= 1e-8)) {
+            if (step <= tol) {
                 converged = 1;
                 break;
             }
-            prev_delta = delta;
         }
 
         if (!converged) {

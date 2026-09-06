@@ -6,10 +6,11 @@
 #define XTRACK_TRACK_MULT_FRINGE_H
 
 #include "xtrack/headers/track.h"
+#include "xtrack/beam_elements/elements_src/fringe_convergence.h"
 
 // This functionality is ported from MAD-NG
 
-#define XT_MULT_FRINGE_MAX_ITER 10
+#define XT_MULT_FRINGE_MAX_ITER XT_FRINGE_MAX_ITER
 
 GPUFUN
 void MultFringe_evaluate(
@@ -151,8 +152,6 @@ void MultFringe_track_single_particle(
     // Forward coordinates are q_out = q_in - f(q_in) rpp. Recover q_in with
     // Newton iteration before applying the inverse momentum map.
     if (backtrack) {
-        const double tol_x = 1e-13 * fabs(output_x) + 1e-16;
-        const double tol_y = 1e-13 * fabs(output_y) + 1e-16;
         uint8_t converged = 0;
         for (int64_t ii = 0; ii < XT_MULT_FRINGE_MAX_ITER; ii++) {
             MULT_FRINGE_JACOBIAN;
@@ -163,12 +162,15 @@ void MultFringe_track_single_particle(
                 (d * residual_x - c * residual_y) / det;
             const double next_y = y -
                 (a * residual_y - b * residual_x) / det;
-            const double delta_x = fabs(next_x - x);
-            const double delta_y = fabs(next_y - y);
+            const double step_x = fabs(next_x - x);
+            const double step_y = fabs(next_y - y);
+            const double tol_x = 1e-13 * fabs(next_x) + XT_FRINGE_TOL_FLOOR;
+            const double tol_y = 1e-13 * fabs(next_y) + XT_FRINGE_TOL_FLOOR;
             x = next_x;
             y = next_y;
             MULT_FRINGE_EVALUATE(x, y);
-            if (delta_x <= tol_x && delta_y <= tol_y) {
+
+            if ((step_x <= tol_x && step_y <= tol_y)) {
                 converged = 1;
                 break;
             }
@@ -197,7 +199,7 @@ void MultFringe_track_single_particle(
     // map, which is the incoming momentum when backtracking.
     const double out_px = backtrack ? px : new_px;
     const double out_py = backtrack ? py : new_py;
-    const double delta_t = (backtrack ? -1. : 1.) * (1 / beta0 + pt)
+    const double dt = (backtrack ? -1. : 1.) * (1 / beta0 + pt)
         * (out_px * fx + out_py * fy) * POW3(rpp);
 
     // Likewise x and y hold the upstream coordinates in both directions: the
@@ -207,7 +209,7 @@ void MultFringe_track_single_particle(
     LocalParticle_set_y(part, backtrack ? y : y - fy * rpp);
     LocalParticle_set_px(part, new_px);
     LocalParticle_set_py(part, new_py);
-    LocalParticle_set_zeta(part, (t + delta_t) * beta0);
+    LocalParticle_set_zeta(part, (t + dt) * beta0);
 
     #undef MULT_FRINGE_EVALUATE
     #undef MULT_FRINGE_JACOBIAN
