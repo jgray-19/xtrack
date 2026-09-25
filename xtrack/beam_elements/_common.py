@@ -3,15 +3,12 @@
 # Copyright (c) CERN, 2025.                 #
 # ######################################### #
 
+from numbers import Number
 from warnings import warn
 
 import numpy as np
-
-from numbers import Number
-
-from scipy.special import factorial
-
 import xobjects as xo
+from scipy.special import factorial
 
 from ..internal_record import RecordIndex
 
